@@ -72,6 +72,188 @@ class SigmoidFocalClassificationLoss(nn.Module):
         return loss * weights
 
 
+class SigmoidVariFocalClassificationLoss(nn.Module):
+    """
+    Sigmoid focal cross entropy loss.
+    """
+
+    def __init__(self, gamma: float = 2.0, alpha: float = 0.25):
+        """
+        Args:
+            gamma: Weighting parameter to balance loss for hard and easy examples.
+            alpha: Weighting parameter to balance loss for positive and negative examples.
+        """
+        super(SigmoidVariFocalClassificationLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.iou_weighted = True
+
+    @staticmethod
+    def sigmoid_cross_entropy_with_logits(input: torch.Tensor, target: torch.Tensor):
+        """ PyTorch Implementation for tf.nn.sigmoid_cross_entropy_with_logits:
+            max(x, 0) - x * z + log(1 + exp(-abs(x))) in
+            https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
+
+        Args:
+            input: (B, #anchors, #classes) float tensor.
+                Predicted logits for each class
+            target: (B, #anchors, #classes) float tensor.
+                One-hot encoded classification targets
+
+        Returns:
+            loss: (B, #anchors, #classes) float tensor.
+                Sigmoid cross entropy loss without reduction
+        """
+        loss = torch.clamp(input, min=0) - input * target + \
+               torch.log1p(torch.exp(-torch.abs(input)))
+        return loss
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor, weights: torch.Tensor):
+        """
+        Args:
+            input: (B, #anchors, #classes) float tensor.
+                Predicted logits for each class
+            target: (B, #anchors, #classes) float tensor.
+                One-hot encoded classification targets
+            weights: (B, #anchors) float tensor.
+                Anchor-wise weights.
+
+        Returns:
+            weighted_loss: (B, #anchors, #classes) float tensor after weighting.
+        """
+        pred_sigmoid = torch.sigmoid(input)
+        # alpha_weight = target * self.alpha + (1 - target) * (1 - self.alpha)
+        # pt = target * (1.0 - pred_sigmoid) + (1.0 - target) * pred_sigmoid
+        # focal_weight = alpha_weight * torch.pow(pt, self.gamma)
+
+        if self.iou_weighted:
+            focal_weight = target * (target > 0.0).float() + \
+                           self.alpha * (pred_sigmoid - target).abs().pow(self.gamma) * \
+                           (target <= 0.0).float()
+        else:
+            focal_weight = (target > 0.0).float() + \
+                           self.alpha * (pred_sigmoid - target).abs().pow(self.gamma) * \
+                           (target <= 0.0).float()
+
+        bce_loss = self.sigmoid_cross_entropy_with_logits(input, target)
+        # bce_loss = F.binary_cross_entropy_with_logits(input, target, reduction='none')  # 2021.7.13
+
+        loss = focal_weight * bce_loss
+
+        if weights.shape.__len__() == 2 or \
+                (weights.shape.__len__() == 1 and target.shape.__len__() == 2):
+            weights = weights.unsqueeze(-1)
+
+        assert weights.shape.__len__() == loss.shape.__len__()
+
+        return loss * weights
+
+
+class SigmoidQualityFocalClassificationLoss(nn.Module):
+    """
+        Sigmoid quality focal classificationLoss loss.
+        """
+
+    def __init__(self, gamma: float = 2.0, alpha: float = 0.25):
+        """
+        Args:
+            gamma: Weighting parameter to balance loss for hard and easy examples.
+        """
+        super(SigmoidQualityFocalClassificationLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.pos_neg_weighted = False
+
+    @staticmethod
+    def quality_focal_loss(pred, target, beta=2.0):
+        r"""Quality Focal Loss (QFL) is from `Generalized Focal Loss: Learning
+        Qualified and Distributed Bounding Boxes for Dense Object Detection
+        <https://arxiv.org/abs/2006.04388>`_.
+
+        Args:
+            pred (torch.Tensor): Predicted joint representation of classification
+                and quality (IoU) estimation with shape (N, C), C is the number of
+                classes.
+            target (tuple([torch.Tensor])): Target category label with shape (N,)
+                and target quality label with shape (N,).
+            beta (float): The beta parameter for calculating the modulating factor.
+                Defaults to 2.0.
+
+        Returns:
+            torch.Tensor: Loss tensor with shape (N,).
+        """
+
+        # negatives are supervised by 0 quality score
+        pred_sigmoid = torch.sigmoid(pred)
+        scale_factor = pred_sigmoid
+        zerolabel = scale_factor.new_zeros(pred.shape)
+        loss = F.binary_cross_entropy_with_logits(
+            pred, zerolabel, reduction='none') * scale_factor.pow(beta)
+
+        # positives are supervised by bbox quality (IoU) score
+        pos = (target > 0.0)
+        scale_factor = target[pos] - pred_sigmoid[pos]
+        loss[pos] = F.binary_cross_entropy_with_logits(
+            pred[pos], target[pos],
+            reduction='none') * scale_factor.abs().pow(beta)
+
+        # 方式二
+        # focal_weight = (pred_sigmoid - target).abs().pow(beta) * (target > 0.0).float() + pred_sigmoid.pow(beta) * (target <= 0.0).float()
+        # bce_loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none')
+        # loss = focal_weight * bce_loss
+
+        return loss
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor, weights: torch.Tensor):
+        """
+        Args:
+            input: (B, #anchors, #classes) float tensor.
+                Predicted logits for each class
+            target: (B, #anchors, #classes) float tensor.
+                One-hot encoded classification targets
+            weights: (B, #anchors) float tensor.
+                Anchor-wise weights.
+
+        Returns:
+            weighted_loss: (B, #anchors, #classes) float tensor after weighting.
+        """
+
+        pred_sigmoid = torch.sigmoid(input)
+
+        # 方式一
+        # negatives are supervised by 0 quality score
+        # scale_factor = pred_sigmoid
+        # zerolabel = scale_factor.new_zeros(input.shape)
+        # loss = F.binary_cross_entropy_with_logits(
+        #     input, zerolabel, reduction='none'
+        # ) * scale_factor.pow(self.gamma)
+
+        # positives are supervised by bbox quality (IoU) score
+        # pos = (target > 0.0)
+        # scale_factor = target[pos] - pred_sigmoid[pos]
+        # loss[pos] = F.binary_cross_entropy_with_logits(
+        #     input[pos], target[pos], reduction='none'
+        # ) * scale_factor.abs().pow(self.gamma)
+
+        # 方式二
+        if self.pos_neg_weighted:
+            focal_weight = self.alpha * (pred_sigmoid - target).abs().pow(self.gamma) * (target > 0.0).float() + \
+                           (1 - self.alpha) * pred_sigmoid.pow(self.gamma) * (target <= 0.0).float()
+        else:
+            focal_weight = (pred_sigmoid - target).abs().pow(self.gamma) * (target > 0.0).float() + \
+                           pred_sigmoid.pow(self.gamma) * (target <= 0.0).float()
+
+        bce_loss = F.binary_cross_entropy_with_logits(input, target, reduction='none')
+        loss = focal_weight * bce_loss
+
+        if weights.shape.__len__() == 2 or \
+                (weights.shape.__len__() == 1 and target.shape.__len__() == 2):
+            weights = weights.unsqueeze(-1)
+
+        assert weights.shape.__len__() == loss.shape.__len__()
+        return loss * weights
+
+
 class WeightedSmoothL1Loss(nn.Module):
     """
     Code-wise Weighted Smooth L1 Loss modified based on fvcore.nn.smooth_l1_loss

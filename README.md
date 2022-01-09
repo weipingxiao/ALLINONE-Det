@@ -22,7 +22,8 @@
 
 - Support [ONCE dataset](https://once-for-auto-driving.github.io/index.html) and more supervised, semi-supervised, unsupervised domain adaptive learning models for it
 - Support spconv 1.0~2.x for `centerpoint_once` detector
-- Add PV-RCNN++, Voxel-RCNN related baseline configs on [ONCE dataset](https://once-for-auto-driving.github.io/index.html).
+- Add PV-RCNN++, Voxel-RCNN related baseline configs on [ONCE dataset](https://once-for-auto-driving.github.io/index.html)
+- Support CT3D, SA-Det3D, CIA-SSD (SSFA), centerpoint_kitti, PA_AUG, QualityFocalLoss, VariFocalLoss
 
 ## Supported Features
 
@@ -30,6 +31,7 @@
 - [x] Support KITTI, ONCE, NuScnees, Lyft and Waymo datasets
 - [x] Support supervised, semi-supervised, unsupervised domain adaptive learning 
 - [x] Support more models and modules than OpenPCDet
+- [x] Supports more Focal Loss variants, e.g., QualityFocalLoss and VeriFocalLoss
 - [ ] Support plug-and-play remote visual debugging
 - [ ] Support unified model configuration, training, recording and analysis
 - [ ] Support Adaptive Object Augmentation Module
@@ -42,27 +44,31 @@
 
 - Currently supported models: 
 
-  - supervised learning methods (total 11)
+  - supervised learning methods (total 15)
 
-  | Methods       | Support datasets             |        Support features        |
-  | ------------- | ---------------------------- | :----------------------------: |
-  | SECOND        | kitti, once, waymo, nuscenes | `center_head`, `resnet`, `IOU` |
-  | PintPillars   | kitti, once, waymo, nuscenes |    `center_head`, `resnet`     |
-  | CBGS          | nuscenes, lyft               |                                |
-  | PointRCNN     | kitti, once                  |             `IOU`              |
-  | Part A^2 Net  | kitti, waymo                 |         `anchor free`          |
-  | PV-RCNN       | kitti, once, waymo           |    `center_head`, `resnet`     |
-  | PV-RCNN++     | once, waymo                  |    `center_head`, `resnet`     |
-  | Voxel-RCNN    | kitti, once, waymo           | `center_head`, `resnet`, `IOU` |
-  | CaDDN         | kitti                        |                                |
-  | Centerpoint   | kitti, once, waymo, nuscenes |    `center_head`, `resnet`     |
-  | PointPainting | once                         |                                |
+  | Methods       | Support datasets             |        Support features         |
+  | ------------- | ---------------------------- | :-----------------------------: |
+  | SECOND        | kitti, once, waymo, nuscenes | `center_head`, `resnet`, `IOU`  |
+  | PintPillars   | kitti, once, waymo, nuscenes |     `center_head`, `resnet`     |
+  | CBGS          | nuscenes, lyft               |                                 |
+  | PointRCNN     | kitti, once                  |              `IOU`              |
+  | Part A^2 Net  | kitti, waymo                 |          `anchor-free`          |
+  | PV-RCNN       | kitti, once, waymo           |     `center_head`, `resnet`     |
+  | PV-RCNN++     | once, waymo                  |     `center_head`, `resnet`     |
+  | Voxel-RCNN    | kitti, once, waymo           | `center_head`, `resnet`, `IOU`  |
+  | CaDDN         | kitti                        |                                 |
+  | Centerpoint   | kitti, once, waymo, nuscenes | `center_head`, `resnet`, `RCNN` |
+  | PointPainting | once                         |                                 |
+  | CT3D          | kitti, once                  |                                 |
+  | CIA-SSD       | kitti                        |                                 |
+  | SA-Det3D      | kitti, waymo, nuscenes       |                                 |
+  | PA-AUG        | kitti, once                  | `class-separated augmentation`  |
 
   - semi-supervised learning methods (total 6)
 
   | Methods       | Support datasets | Support features |
   | ------------- | ---------------- | :--------------: |
-  | SECOND        | once             |                  |
+  | SemiSECOND    | once             |      `IOU`       |
   | Pseudo Label  | once             |                  |
   | Noisy Student | once             |                  |
   | Mean Teacher  | once             |                  |

@@ -240,8 +240,8 @@ def global_frustum_dropout_top(gt_boxes, points, intensity_range):
     intensity = np.random.uniform(intensity_range[0], intensity_range[1])
 
     threshold = np.max(points[:, 2]) - intensity * (np.max(points[:, 2]) - np.min(points[:, 2]))
-    points = points[points[:,2] < threshold]
-    gt_boxes = gt_boxes[gt_boxes[:,2] < threshold]
+    points = points[points[:, 2] < threshold]
+    gt_boxes = gt_boxes[gt_boxes[:, 2] < threshold]
 
     return gt_boxes, points
 
@@ -256,8 +256,8 @@ def global_frustum_dropout_bottom(gt_boxes, points, intensity_range):
     intensity = np.random.uniform(intensity_range[0], intensity_range[1])
 
     threshold = np.min(points[:, 2]) + intensity * (np.max(points[:, 2]) - np.min(points[:, 2]))
-    points = points[points[:,2] > threshold]
-    gt_boxes = gt_boxes[gt_boxes[:,2] > threshold]
+    points = points[points[:, 2] > threshold]
+    gt_boxes = gt_boxes[gt_boxes[:, 2] > threshold]
 
     return gt_boxes, points
 
@@ -272,8 +272,8 @@ def global_frustum_dropout_left(gt_boxes, points, intensity_range):
     intensity = np.random.uniform(intensity_range[0], intensity_range[1])
 
     threshold = np.max(points[:, 1]) - intensity * (np.max(points[:, 1]) - np.min(points[:, 1]))
-    points = points[points[:,1] < threshold]
-    gt_boxes = gt_boxes[gt_boxes[:,1] < threshold]
+    points = points[points[:, 1] < threshold]
+    gt_boxes = gt_boxes[gt_boxes[:, 1] < threshold]
 
     return gt_boxes, points
 
@@ -288,8 +288,8 @@ def global_frustum_dropout_right(gt_boxes, points, intensity_range):
     intensity = np.random.uniform(intensity_range[0], intensity_range[1])
 
     threshold = np.min(points[:, 1]) + intensity * (np.max(points[:, 1]) - np.min(points[:, 1]))
-    points = points[points[:,1] > threshold]
-    gt_boxes = gt_boxes[gt_boxes[:,1] > threshold]
+    points = points[points[:, 1] > threshold]
+    gt_boxes = gt_boxes[gt_boxes[:, 1] > threshold]
 
     return gt_boxes, points
 
@@ -389,7 +389,7 @@ def local_frustum_dropout_top(gt_boxes, points, intensity_range):
         points_in_box, mask = get_points_in_box(points, box)
         threshold = (z + dz/2) - intensity * dz
 
-        points = points[np.logical_not(np.logical_and(mask, points[:,2] >= threshold))]
+        points = points[np.logical_not(np.logical_and(mask, points[:, 2] >= threshold))]
 
     return gt_boxes, points
 
@@ -408,7 +408,7 @@ def local_frustum_dropout_bottom(gt_boxes, points, intensity_range):
         points_in_box, mask = get_points_in_box(points, box)
         threshold = (z - dz/2) + intensity * dz
 
-        points = points[np.logical_not(np.logical_and(mask, points[:,2] <= threshold))]
+        points = points[np.logical_not(np.logical_and(mask, points[:, 2] <= threshold))]
 
     return gt_boxes, points
 
@@ -427,7 +427,7 @@ def local_frustum_dropout_left(gt_boxes, points, intensity_range):
         points_in_box, mask = get_points_in_box(points, box)
         threshold = (y + dy/2) - intensity * dy
 
-        points = points[np.logical_not(np.logical_and(mask, points[:,1] >= threshold))]
+        points = points[np.logical_not(np.logical_and(mask, points[:, 1] >= threshold))]
 
     return gt_boxes, points
 
@@ -446,12 +446,12 @@ def local_frustum_dropout_right(gt_boxes, points, intensity_range):
         points_in_box, mask = get_points_in_box(points, box)
         threshold = (y - dy/2) + intensity * dy
 
-        points = points[np.logical_not(np.logical_and(mask, points[:,1] <= threshold))]
+        points = points[np.logical_not(np.logical_and(mask, points[:, 1] <= threshold))]
 
     return gt_boxes, points
 
 def get_points_in_box(points, gt_box):
-    x, y, z = points[:,0], points[:,1], points[:,2]
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
     cx, cy, cz = gt_box[0], gt_box[1], gt_box[2]
     dx, dy, dz, rz = gt_box[3], gt_box[4], gt_box[5], gt_box[6]
     shift_x, shift_y, shift_z = x - cx, y - cy, z - cz

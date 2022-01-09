@@ -8,9 +8,14 @@ from .second_net_iou import SECONDNetIoU
 from .caddn import CaDDN
 from .voxel_rcnn import VoxelRCNN
 from .centerpoint import CenterPoint
+from .centerpoint_kitti import CenterPoint as CenterPointv1
+from .centerpoint_rcnn_kitti import CenterPointRCNN as CenterPointRCNNv1
 from .centerpoint_once import CenterPoints as CenterPointv2
 from .semi_second import SemiSECOND, SemiSECONDIoU
+from .CT3D import CT3D
+from .CT3D_3CAT import CT3D_3CAT
 from .pv_rcnn_plusplus import PVRCNNPlusPlus
+
 
 __all__ = {
     'Detector3DTemplate': Detector3DTemplate,
@@ -23,8 +28,14 @@ __all__ = {
     'CaDDN': CaDDN,
     'VoxelRCNN': VoxelRCNN,
     'CenterPoint': CenterPoint,  # OpenPCDet v0.5.0
+    'CenterPointv1': CenterPointv1,  # tianweiy/CenterPoint-KITTI
+    'CenterPointRCNN': CenterPointRCNNv1,  # tianweiy/CenterPoint-KITTI
     'CenterPoints': CenterPointv2,  # ONCE_BENCHMARK
-    'PVRCNNPlusPlus': PVRCNNPlusPlus
+    'SemiSECOND': SemiSECOND,
+    'SemiSECONDIoU': SemiSECONDIoU,
+    'CT3D': CT3D,
+    "CT3D_3CAT": CT3D_3CAT,
+    'PVRCNNPlusPlus': PVRCNNPlusPlus,
 }
 
 
