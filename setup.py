@@ -28,7 +28,7 @@ def write_version_to_file(version, target_file):
 
 
 if __name__ == '__main__':
-    version = '0.1.0+%s' % get_git_commit_number()
+    version = '0.1.1+%s' % get_git_commit_number()
     write_version_to_file(version, 'pcdet/version.py')
 
     setup(
@@ -56,6 +56,17 @@ if __name__ == '__main__':
             'build_ext': BuildExtension,
         },
         ext_modules=[
+            make_cuda_ext(
+                name='center_ops_cuda',
+                module='pcdet.ops.center_ops',
+                sources=[
+                    'src/center_ops_api.cpp',
+                    'src/draw_center.cpp',
+                    'src/draw_center_kernel.cu',
+                    'src/center_rotate_nms.cpp',
+                    'src/center_rotate_nms_kernel.cu'
+                ],
+            ),
             make_cuda_ext(
                 name='iou3d_nms_cuda',
                 module='pcdet.ops.iou3d_nms',

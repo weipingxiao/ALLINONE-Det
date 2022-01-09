@@ -7,6 +7,8 @@ from pcdet.utils import common_utils
 from .dataset import DatasetTemplate
 from .kitti.kitti_dataset import KittiDataset
 from .nuscenes.nuscenes_dataset import NuScenesDataset
+from .once.once_dataset import ONCEDataset
+from .once.once_semi_dataset import ONCEPretrainDataset, ONCELabeledDataset, ONCEUnlabeledDataset, ONCETestDataset, split_once_semi_data
 from .waymo.waymo_dataset import WaymoDataset
 from .pandaset.pandaset_dataset import PandasetDataset
 from .lyft.lyft_dataset import LyftDataset
@@ -15,9 +17,20 @@ __all__ = {
     'DatasetTemplate': DatasetTemplate,
     'KittiDataset': KittiDataset,
     'NuScenesDataset': NuScenesDataset,
+    'ONCEDataset': ONCEDataset,
     'WaymoDataset': WaymoDataset,
     'PandasetDataset': PandasetDataset,
     'LyftDataset': LyftDataset
+}
+
+_semi_dataset_dict = {
+    'ONCEDataset': {
+        'PARTITION_FUNC': split_once_semi_data,
+        'PRETRAIN': ONCEPretrainDataset,
+        'LABELED': ONCELabeledDataset,
+        'UNLABELED': ONCEUnlabeledDataset,
+        'TEST': ONCETestDataset
+    }
 }
 
 
@@ -67,6 +80,7 @@ def build_dataloader(dataset_cfg, class_names, batch_size, dist, root_path=None,
             sampler = DistributedSampler(dataset, world_size, rank, shuffle=False)
     else:
         sampler = None
+
     dataloader = DataLoader(
         dataset, batch_size=batch_size, pin_memory=True, num_workers=workers,
         shuffle=(sampler is None) and training, collate_fn=dataset.collate_batch,
@@ -74,3 +88,108 @@ def build_dataloader(dataset_cfg, class_names, batch_size, dist, root_path=None,
     )
 
     return dataset, dataloader, sampler
+
+
+def build_semi_dataloader(dataset_cfg, class_names, batch_size, dist, root_path=None, workers=4,
+                     logger=None, merge_all_iters_to_one_epoch=False):
+
+    assert merge_all_iters_to_one_epoch is False
+
+    train_infos, test_infos, labeled_infos, unlabeled_infos = _semi_dataset_dict[dataset_cfg.DATASET]['PARTITION_FUNC'](
+        info_paths = dataset_cfg.INFO_PATH,
+        data_splits = dataset_cfg.DATA_SPLIT,
+        root_path = root_path,
+        labeled_ratio = dataset_cfg.LABELED_RATIO,
+        logger = logger
+    )
+
+    pretrain_dataset = _semi_dataset_dict[dataset_cfg.DATASET]['PRETRAIN'](
+        dataset_cfg=dataset_cfg,
+        class_names=class_names,
+        infos = train_infos,
+        root_path=root_path,
+        logger=logger,
+    )
+    if dist:
+        pretrain_sampler = torch.utils.data.distributed.DistributedSampler(pretrain_dataset)
+    else:
+        pretrain_sampler = None
+
+    pretrain_dataloader = DataLoader(
+        pretrain_dataset, batch_size=batch_size['pretrain'], pin_memory=True, num_workers=workers,
+        shuffle=(pretrain_sampler is None) and True, collate_fn=pretrain_dataset.collate_batch,
+        drop_last=False, sampler=pretrain_sampler, timeout=0
+    )
+
+    labeled_dataset = _semi_dataset_dict[dataset_cfg.DATASET]['LABELED'](
+        dataset_cfg=dataset_cfg,
+        class_names=class_names,
+        infos = labeled_infos,
+        root_path=root_path,
+        logger=logger,
+    )
+    if dist:
+        labeled_sampler = torch.utils.data.distributed.DistributedSampler(labeled_dataset)
+    else:
+        labeled_sampler = None
+    labeled_dataloader = DataLoader(
+        labeled_dataset, batch_size=batch_size['labeled'], pin_memory=True, num_workers=workers,
+        shuffle=(labeled_sampler is None) and True, collate_fn=labeled_dataset.collate_batch,
+        drop_last=False, sampler=labeled_sampler, timeout=0
+    )
+
+    unlabeled_dataset = _semi_dataset_dict[dataset_cfg.DATASET]['UNLABELED'](
+        dataset_cfg=dataset_cfg,
+        class_names=class_names,
+        infos = unlabeled_infos,
+        root_path=root_path,
+        logger=logger,
+    )
+    if dist:
+        unlabeled_sampler = torch.utils.data.distributed.DistributedSampler(unlabeled_dataset)
+    else:
+        unlabeled_sampler = None
+    unlabeled_dataloader = DataLoader(
+        unlabeled_dataset, batch_size=batch_size['unlabeled'], pin_memory=True, num_workers=workers,
+        shuffle=(unlabeled_sampler is None) and True, collate_fn=unlabeled_dataset.collate_batch,
+        drop_last=False, sampler=unlabeled_sampler, timeout=0
+    )
+
+    test_dataset = _semi_dataset_dict[dataset_cfg.DATASET]['TEST'](
+        dataset_cfg=dataset_cfg,
+        class_names=class_names,
+        infos = test_infos,
+        root_path=root_path,
+        logger=logger,
+    )
+    if dist:
+        rank, world_size = common_utils.get_dist_info()
+        test_sampler = DistributedSampler(test_dataset, world_size, rank, shuffle=False)
+    else:
+        test_sampler = None
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=batch_size['test'], pin_memory=True, num_workers=workers,
+        shuffle=(test_sampler is None) and False, collate_fn=test_dataset.collate_batch,
+        drop_last=False, sampler=test_sampler, timeout=0
+    )
+
+    datasets = {
+        'pretrain': pretrain_dataset,
+        'labeled': labeled_dataset,
+        'unlabeled': unlabeled_dataset,
+        'test': test_dataset
+    }
+    dataloaders = {
+        'pretrain': pretrain_dataloader,
+        'labeled': labeled_dataloader,
+        'unlabeled': unlabeled_dataloader,
+        'test': test_dataloader
+    }
+    samplers = {
+        'pretrain': pretrain_sampler,
+        'labeled': labeled_sampler,
+        'unlabeled': unlabeled_sampler,
+        'test': test_sampler
+    }
+
+    return datasets, dataloaders, samplers

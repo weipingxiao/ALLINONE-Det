@@ -8,6 +8,8 @@ from .second_net_iou import SECONDNetIoU
 from .caddn import CaDDN
 from .voxel_rcnn import VoxelRCNN
 from .centerpoint import CenterPoint
+from .centerpoint_once import CenterPoints as CenterPointv2
+from .semi_second import SemiSECOND, SemiSECONDIoU
 from .pv_rcnn_plusplus import PVRCNNPlusPlus
 
 __all__ = {
@@ -20,7 +22,8 @@ __all__ = {
     'SECONDNetIoU': SECONDNetIoU,
     'CaDDN': CaDDN,
     'VoxelRCNN': VoxelRCNN,
-    'CenterPoint': CenterPoint,
+    'CenterPoint': CenterPoint,  # OpenPCDet v0.5.0
+    'CenterPoints': CenterPointv2,  # ONCE_BENCHMARK
     'PVRCNNPlusPlus': PVRCNNPlusPlus
 }
 
